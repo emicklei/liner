@@ -22,7 +22,7 @@ type commonState struct {
 	inputRedirected   bool
 	history           []string
 	historyMutex      sync.RWMutex
-	completer         WordCompleter
+	completer         PosCompleter
 	columns           int
 	killRing          *ring.Ring
 	ctrlCAborts       bool
@@ -195,15 +195,31 @@ func (s *State) SetCompleter(f Completer) {
 		s.completer = nil
 		return
 	}
-	s.completer = func(line string, pos int) (string, []string, string) {
-		return "", f(string([]rune(line)[:pos])), string([]rune(line)[pos:])
+	// wrap the completer in a PosCompleter
+	s.completer = func(line string, pos int) (head string, completions []WordAndPos, tail string) {
+		words := f(string([]rune(line)[:pos]))
+		for _, each := range words {
+			completions = append(completions, WordAndPos{Word: each, Pos: len(each)})
+		}
+		return "", completions, string([]rune(line)[pos:])
 	}
 }
 
 // SetWordCompleter sets the completion function that Liner will call to
 // fetch completion candidates when the user presses tab.
 func (s *State) SetWordCompleter(f WordCompleter) {
-	s.completer = f
+	if f == nil {
+		s.completer = nil
+		return
+	}
+	// wrap the completer in a PosCompleter
+	s.completer = func(line string, pos int) (head string, completions []WordAndPos, tail string) {
+		h, c, t := f(string([]rune(line)[:pos]), pos)
+		for _, each := range c {
+			completions = append(completions, WordAndPos{Word: each, Pos: len(each)})
+		}
+		return h, completions, t
+	}
 }
 
 // SetTabCompletionStyle sets the behvavior when the Tab key is pressed
@@ -259,4 +275,17 @@ func (s *State) promptUnsupported(p string) (string, error) {
 		return "", err
 	}
 	return string(linebuf), nil
+}
+
+type WordAndPos struct {
+	Word string // completion string
+	Pos  int    // position of cursor within completion string, zero is before the completion string.
+}
+
+type PosCompleter func(line string, pos int) (head string, completions []WordAndPos, tail string)
+
+// SetPosCompleter sets the completion function that Liner will call to
+// fetch completion candidates when the user presses tab.
+func (s *State) SetPosCompleter(p PosCompleter) {
+	s.completer = p
 }

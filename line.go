@@ -365,10 +365,17 @@ func (s *State) tabComplete(p []rune, line []rune, pos int) ([]rune, int, interf
 	if s.completer == nil {
 		return line, pos, rune(esc), nil
 	}
-	head, list, tail := s.completer(string(line), pos)
-	if len(list) <= 0 {
+	head, wplist, tail := s.completer(string(line), pos)
+	if len(wplist) <= 0 {
 		return line, pos, rune(esc), nil
 	}
+	// TODO
+	list := make([]string, len(wplist))
+	for _, each := range wplist {
+		list = append(list, each.Word)
+	}
+	// END TODO
+
 	hl := utf8.RuneCountInString(head)
 	if len(list) == 1 {
 		err := s.refresh(p, []rune(head+list[0]+tail), hl+utf8.RuneCountInString(list[0]))
