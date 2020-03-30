@@ -371,8 +371,8 @@ func (s *State) tabComplete(p []rune, line []rune, pos int) ([]rune, int, interf
 	}
 	// TODO
 	list := make([]string, len(wplist))
-	for _, each := range wplist {
-		list = append(list, each.Word)
+	for i, each := range wplist {
+		list[i] = each.Word
 	}
 	// END TODO
 
